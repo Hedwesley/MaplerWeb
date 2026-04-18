@@ -280,9 +280,7 @@ export class AnalisadorSintatico {
       senaoBloco = new Decl.Bloco(this.anterior().linha, senaoDeclaracoes);
     }
   
-    this.consumirToken(TiposToken.FIM, 'Esperado "fim se"');
-    this.consumirToken(TiposToken.SE, 'Esperado "fim se"');
-    this.consumirToken(TiposToken.PONTO_VIRGULA, 'Esperado ";"');
+    this.consumirFechamentoBloco(TiposToken.SE, 'Esperado "fim se"');
   
     return new Decl.Se(inicio.linha, condicao, entaoBloco, senaoBloco);
   }
@@ -292,9 +290,7 @@ export class AnalisadorSintatico {
     const faca = this.consumirToken(TiposToken.FACA, 'Esperado "faca"');
     const corpo = new Decl.Bloco(faca.linha, this.bloco());
   
-    this.consumirToken(TiposToken.FIM, 'Esperado "fim enquanto"');
-    this.consumirToken(TiposToken.ENQUANTO, 'Esperado "fim enquanto"');
-    this.consumirToken(TiposToken.PONTO_VIRGULA, 'Esperado ";"');
+    this.consumirFechamentoBloco(TiposToken.ENQUANTO, 'Esperado "fim enquanto"');
   
     return new Decl.Enquanto(faca.linha, condicao, corpo);
   }
@@ -351,9 +347,7 @@ export class AnalisadorSintatico {
         }, passo)
       );
 
-      this.consumirToken(TiposToken.FIM, 'Esperado "fim para"');
-      this.consumirToken(TiposToken.PARA, 'Esperado "fim para"');
-      this.consumirToken(TiposToken.PONTO_VIRGULA, 'Esperado ";"');
+      this.consumirFechamentoBloco(TiposToken.PARA, 'Esperado "fim para"');
 
       return new Decl.Para(identificador.linha, inicial, condicao, incremento, corpo);
   }
@@ -582,6 +576,17 @@ export class AnalisadorSintatico {
     if (this.checar(tipo)) return this.avancar();
     throw this.erro(this.espiar(), mensagem);
   }
+
+  consumirFechamentoBloco(tipoToken, mensagem) {
+    this.consumirToken(TiposToken.FIM, mensagem);
+    this.consumirToken(tipoToken, mensagem);
+
+    // ";" opcional no fechamento
+    if (this.checar(TiposToken.PONTO_VIRGULA)) {
+      this.avancar();
+    }
+  }
+
 // No final do arquivo sintatico.js
   erro(token, mensagem) {
     const erroObj = {
