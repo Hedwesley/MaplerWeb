@@ -239,17 +239,31 @@ export class AnalisadorSintatico {
 
   lerDeclaracao() {
     const linha = this.anterior().linha;
+
+    // Aceita tanto: ler x;  quanto: ler(x);
+    let usaParenteses = false;
+    if (this.isTokenTypeIgualA(TiposToken.ESQ_PARENTESES)) {
+      usaParenteses = true;
+    }
+
     const variavel = this.consumirToken(TiposToken.IDENTIFICADOR, "Nome da variavel.");
     
-    // Suporte a leitura de vetor: ler v[0];
+    // Suporte a leitura de vetor: ler v[0]; ou ler(v[0]);
     let varNode;
     if (this.isTokenTypeIgualA(TiposToken.ESQ_COLCHETE)) {
-         const indices = [];
-         do { indices.push(this.expressao()); } while(this.isTokenTypeIgualA(TiposToken.VIRGULA));
-         this.consumirToken(TiposToken.DIR_COLCHETE, "Esperado ']'");
-         varNode = new Expr.VariavelArray(linha, variavel, indices);
+      const indices = [];
+      do {
+        indices.push(this.expressao());
+      } while (this.isTokenTypeIgualA(TiposToken.VIRGULA));
+
+      this.consumirToken(TiposToken.DIR_COLCHETE, "Esperado ']'");
+      varNode = new Expr.VariavelArray(linha, variavel, indices);
     } else {
-         varNode = new Expr.Variavel(linha, variavel);
+      varNode = new Expr.Variavel(linha, variavel);
+    }
+
+    if (usaParenteses) {
+      this.consumirToken(TiposToken.DIR_PARENTESES, "Esperado ')'");
     }
 
     this.consumirToken(TiposToken.PONTO_VIRGULA, "Esperado ';'");

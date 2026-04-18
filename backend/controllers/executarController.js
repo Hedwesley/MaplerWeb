@@ -1,13 +1,31 @@
-// executadorController.js
 import AnalisadorLexico from '../mapler-engine/lexico.js';
 import { AnalisadorSintatico } from '../mapler-engine/sintatico.js';
 import { Interpretador } from '../mapler-engine/Interpretador.js';
 import { EventosService } from '../mapler-engine/EventosService.js';
 
-const mapaParaObjeto = (mapa) => Object.fromEntries(mapa.entries());
+const mapaParaObjetoDetalhado = (mapa) => {
+  const objeto = {};
+
+  for (const [nome, registro] of mapa.entries()) {
+    if (registro && typeof registro === 'object' && 'valor' in registro) {
+      objeto[nome] = {
+        tipo: registro.tipo,
+        valor: registro.valor
+      };
+    } else {
+      objeto[nome] = {
+        tipo: null,
+        valor: registro
+      };
+    }
+  }
+
+  return objeto;
+};
 
 const executar = async (req, res) => {
   const codigo = req.body.codigo;
+  const entradas = req.body.entradas || [];
 
   try {
     const lexer = new AnalisadorLexico();
@@ -24,7 +42,7 @@ const executar = async (req, res) => {
     }
 
     const eventosService = new EventosService();
-    const interpretador = new Interpretador(eventosService);
+    const interpretador = new Interpretador(eventosService, entradas);
 
     await interpretador.interpretar(ast);
 
@@ -34,7 +52,7 @@ const executar = async (req, res) => {
       ast,
       saida: eventosService.saidas,
       errosExecucao: eventosService.erros,
-      variaveis: mapaParaObjeto(interpretador.ambiente.valores)
+      variaveis: mapaParaObjetoDetalhado(interpretador.ambiente.valores)
     });
   } catch (erro) {
     return res.status(400).json({
