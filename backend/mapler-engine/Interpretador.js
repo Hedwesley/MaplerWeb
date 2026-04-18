@@ -8,7 +8,7 @@ class ModuloChamavel {
     constructor(declaracao) {
       this.declaracao = declaracao; // nó Decl.Modulo
     }
-  
+    
     async chamar(interpretador, argumentos = []) {
       // Guarda o ambiente atual
       const ambienteAnterior = interpretador.ambiente;
@@ -47,11 +47,12 @@ class ModuloChamavel {
   
 
 export class Interpretador {
-    constructor(eventosService) {
-        this.eventosService = eventosService;
-        this.ambiente = new Ambiente(); // O ambiente é criado junto com o interpretador
-        this.resolverInput = null;
-    }
+    constructor(eventosService, entradas = []) {
+      this.eventosService = eventosService;
+      this.ambiente = new Ambiente();
+      this.resolverInput = null;
+      this.entradas = Array.isArray(entradas) ? [...entradas] : [];
+   }
 
     async interpretar(ast) {
       if (!ast) {
@@ -83,41 +84,6 @@ export class Interpretador {
       if (erro?.tipo === 'RETORNO_FUNCAO') return;
       this.erro(erro.message || String(erro));
     }
-
-
-    //   try {
-    //       const corpoPrincipal = ast.corpo.declaracoes;
-    //       const definicoesModulos = ast.modulos;
-
-    //       // --- O NOVO SISTEMA DE TRÊS PASSOS ---
-
-    //       // 1º PASSO: Declarar todas as variáveis e módulos primeiro.
-    //       for (const comando of corpoPrincipal) {
-    //           if (comando.tipo === 'VarDeclaracoes') {
-    //               await this.visitarVarDeclaracoes(comando);
-    //           }
-    //       }
-
-    //       // 2º PASSO: Registrar as definições dos módulos.
-    //       if (definicoesModulos && definicoesModulos.length > 0) {
-    //           for (const modulo of definicoesModulos) {
-    //               await this.visitarModulo(modulo);
-    //           }
-    //       }
-
-    //       // 3º PASSO: Executar o resto do código (atribuições, chamadas, etc.).
-    //       for (const comando of corpoPrincipal) {
-    //           if (comando.tipo !== 'VarDeclaracoes') {
-    //               await this.executarDeclaracao(comando);
-    //           }
-    //       }
-
-//       } catch (erro) {
-//         if(erro.tipo === 'RETORNO_FUNCAO') {
-//           return;
-//       }
-//       this.erro(erro.message || erro);
-//   }
 }
     async executarBloco(bloco, ambiente = this.ambiente) {
         const ambienteAnterior = this.ambiente;
@@ -245,21 +211,49 @@ export class Interpretador {
         } while (!(await this.avaliarExpressao(declaracao.condicao)));
     }
 
-    async visitarLer(declaracao) {
-        const promiseDoInput = new Promise((resolve) => {
-            this.resolverInput = resolve;
-            });
-
-            this.eventosService?.notificar('INPUT_SOLICITADO');
-            const valorLido = await promiseDoInput;
-
-            if (declaracao.variavel?.tipo === 'Variavel') {
-                this.ambiente.atribuir(declaracao.variavel.nome, valorLido);
-                return;
-            }
-
-            throw new Error('Leitura de vetor ainda não implementada neste MVP.');
+async visitarLer(declaracao) {
+    if (!this.entradas || this.entradas.length === 0) {
+        if (this.eventosService) {
+            this.eventosService.notificar('INPUT_SOLICITADO');
+        }
+        throw new Error('Nenhuma entrada foi fornecida para o comando ler.');
     }
+
+    const valorLidoBruto = this.entradas.shift();
+
+    if (declaracao.variavel?.tipo === 'Variavel') {
+        const nomeVariavel = declaracao.variavel.nome;
+
+        // Apenas verifica se a variável existe no ambiente
+        try {
+            this.ambiente.obter(nomeVariavel);
+        } catch (erro) {
+            throw new Error(`Variável '${nomeVariavel.lexema}' não foi declarada.`);
+        }
+
+        let valorConvertido = valorLidoBruto;
+
+        // Conversão simples automática
+        if (!isNaN(valorLidoBruto) && valorLidoBruto !== '') {
+            if (String(valorLidoBruto).includes('.')) {
+                valorConvertido = parseFloat(valorLidoBruto);
+            } else {
+                valorConvertido = parseInt(valorLidoBruto, 10);
+            }
+        } else if (String(valorLidoBruto).toLowerCase() === 'verdadeiro') {
+            valorConvertido = true;
+        } else if (String(valorLidoBruto).toLowerCase() === 'falso') {
+            valorConvertido = false;
+        } else {
+            valorConvertido = String(valorLidoBruto);
+        }
+
+        this.ambiente.atribuir(nomeVariavel, valorConvertido);
+        return;
+    }
+
+    throw new Error('Leitura de vetor ainda não implementada neste MVP.');
+}
     
     async visitarModulo(declaracao) {
         const modulo = new ModuloChamavel(declaracao);
