@@ -3,21 +3,14 @@ import { AnalisadorSintatico } from '../mapler-engine/sintatico.js';
 import { Interpretador } from '../mapler-engine/Interpretador.js';
 import { EventosService } from '../mapler-engine/EventosService.js';
 
-const mapaParaObjetoDetalhado = (mapa) => {
+const mapaVariaveisDetalhado = (ambiente) => {
   const objeto = {};
 
-  for (const [nome, registro] of mapa.entries()) {
-    if (registro && typeof registro === 'object' && 'valor' in registro) {
-      objeto[nome] = {
-        tipo: registro.tipo,
-        valor: registro.valor
-      };
-    } else {
-      objeto[nome] = {
-        tipo: null,
-        valor: registro
-      };
-    }
+  for (const [nome, valor] of ambiente.valores.entries()) {
+    objeto[nome] = {
+      tipo: ambiente.tipos.get(nome) || null,
+      valor: valor
+    };
   }
 
   return objeto;
@@ -52,7 +45,7 @@ const executar = async (req, res) => {
       ast,
       saida: eventosService.saidas,
       errosExecucao: eventosService.erros,
-      variaveis: mapaParaObjetoDetalhado(interpretador.ambiente.valores)
+      variaveis: mapaVariaveisDetalhado(interpretador.ambiente)
     });
   } catch (erro) {
     return res.status(400).json({
