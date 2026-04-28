@@ -1,4 +1,4 @@
-# 🧠 Mapler Web — Backend
+# 🧠 Mapler Web 
 
 Este projeto consiste na implementação de um interpretador de código em Portugol (Mapler) para execução via web.
 
